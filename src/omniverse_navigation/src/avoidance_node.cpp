@@ -1,138 +1,91 @@
 #include "../include/omniverse_navigation/avoidance_node.hpp"
-#include <vector>
-#include <cmath>
 
-AvoidanceNode::AvoidanceNode() : Node("avoidance_node") {
-    subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-        "/scan", 10, std::bind(&AvoidanceNode::laser_callback, this, std::placeholders::_1));
-    publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
-    repulsive_strength_ = 0.05;
-    repulsive_distance_ = 0.55;
-    speed_ = 0.4;
-    frequency_ = 20;
+VFFAvoidance::VFFAvoidance()
+: Node("vff_avoidance_node")
+{
+    cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+    laser_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
+        "scan", 10, std::bind(&VFFAvoidance::laserCallback, this, std::placeholders::_1));
 
-    int period_in_milliseconds = 1000 / frequency_;
-    timer_ = this->create_wall_timer(
-        std::chrono::milliseconds(period_in_milliseconds), std::bind(&AvoidanceNode::timer_callback, this));
+    // Define the fixed global direction vector (e.g., moving forward in the global frame)
+    fixed_global_direction_ = tf2::Vector3(1.0, 0.0, 0.0); // Forward direction in the global frame
 
-    cmd_vel_msg_.linear.x = speed_;
-    cmd_vel_msg_.angular.z = 0.0;
-
+    RCLCPP_INFO(this->get_logger(), "VFF Avoidance Node has been started.");
 }
 
+void VFFAvoidance::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+{
+    tf2::Vector3 repulsive_vector = calculateRepulsiveVector(msg);
+    geometry_msgs::msg::Twist cmd_vel;
 
-void AvoidanceNode::laser_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg){
-    laser_scan_ = msg;
+    // Combine the global fixed direction vector with the repulsive vector
+    double repulsive_weight = 0.5; // Adjust this value as needed
+    tf2::Vector3 resultant_vector = fixed_global_direction_ + repulsive_weight * repulsive_vector;
+    RCLCPP_INFO(this->get_logger(), "Resultant Vector: x = %f, y = %f", 
+                resultant_vector.x(), resultant_vector.y());
+
+    // Calculate the angular velocity based on the angle of the resultant vector
+    double angle = atan2(resultant_vector.y(), resultant_vector.x());
+
+    // If the resultant vector is close to the forward direction, reduce angular velocity
+    if (fabs(angle) < 0.1) { // Threshold value, adjust as needed
+        angle = 0.0;
+    }
+
+    double angular_velocity = calculateAngularVelocity(angle);
+
+    // Set the linear and angular velocity in the Twist message
+    cmd_vel.linear.x = clamp(resultant_vector.length(), 0.0, 0.5); // Clamp to a safe range
+    cmd_vel.angular.z = angular_velocity;
+
+    // Publish the cmd_vel message
+    cmd_vel_pub_->publish(cmd_vel);
 }
 
+tf2::Vector3 VFFAvoidance::calculateRepulsiveVector(const sensor_msgs::msg::LaserScan::SharedPtr& msg)
+{
+    tf2::Vector3 repulsive_vector(0.0, 0.0, 0.0);
+    double min_distance = std::numeric_limits<double>::infinity();
 
-void AvoidanceNode::timer_callback(){
-    if (laser_scan_){
-        calculate_forces();
-        // RCLCPP_INFO(this->get_logger(), "Calculate forces...");
+    // Define the angular range in front of the robot (e.g., ±45 degrees)
+    double forward_angle_min = -M_PI / 4; // -45 degrees
+    double forward_angle_max = M_PI / 4;  // +45 degrees
+
+    for (size_t i = 0; i < msg->ranges.size(); ++i) {
+        double distance = msg->ranges[i];
+        double angle = msg->angle_min + i * msg->angle_increment;
+
+        // Only consider obstacles within the specified forward angle range
+        if (angle >= forward_angle_min && angle <= forward_angle_max) {
+            if (distance < min_distance) {
+                min_distance = distance;
+                repulsive_vector.setX(-cos(angle) / distance); // Push back
+                repulsive_vector.setY(-sin(angle) / distance); // Push away
+            }
+        }
     }
-    else{
-        cmd_vel_msg_.linear.x = 0.0;
-        cmd_vel_msg_.angular.z = 0.0;
-    }
 
-    publisher_->publish(cmd_vel_msg_);
-
+    //RCLCPP_INFO(this->get_logger(), "Repulsive Vector: [%f, %f]", repulsive_vector.x(), repulsive_vector.y());
+    return repulsive_vector;
 }
 
-
-void AvoidanceNode::calculate_forces(){
-
-    float repulsive_force_x = 0.0;
-    float repulsive_force_y = 0.0;
-
-    // double closest_obstacle_distance = *std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
-    // auto min_element_iter = std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
-    // int i = std::distance(laser_scan_->ranges.begin(), min_element_iter);
-
-
-    // Find the minimum element in the first 90 elements
-    auto minFirst90Iter = std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.begin() + 90);
-    float minFirst90 = *minFirst90Iter;
-    int posMinFirst90 = std::distance(laser_scan_->ranges.begin(), minFirst90Iter);
-
-    // Find the minimum element in the last 90 elements
-    auto minLast90Iter = std::min_element(laser_scan_->ranges.end() - 90, laser_scan_->ranges.end());
-    float minLast90 = *minLast90Iter;
-    int posMinLast90 = std::distance(laser_scan_->ranges.begin(), minLast90Iter);
-
-    // Compare the two minimums and find the overall minimum and its position
-    double closest_obstacle_distance;
-    int i;
-    if (minFirst90 < minLast90) {
-        closest_obstacle_distance = minFirst90;
-        i = posMinFirst90;
-    } else {
-        closest_obstacle_distance = minLast90;
-        i = posMinLast90;
-    }
-
-
-
-    if (closest_obstacle_distance < repulsive_distance_){
-        float angle = laser_scan_->angle_min + i * laser_scan_->angle_increment;
-        float force = repulsive_strength_ / (closest_obstacle_distance * closest_obstacle_distance);
-        if (force > 0.6) force = 0.6;
-        repulsive_force_x += -force * std::cos(angle);
-        repulsive_force_y += -force * std::sin(angle);
-    }
-
-    float attractive_force_x = 0.5;
-    float attractive_force_y = 0.0;
-
-    float resultant_force_x = attractive_force_x + repulsive_force_x;
-    float resultant_force_y = attractive_force_y + repulsive_force_y;
-
-    cmd_vel_msg_.linear.x = resultant_force_x;
-    cmd_vel_msg_.angular.z = std::atan2(resultant_force_y, resultant_force_x);
-
+double VFFAvoidance::calculateAngularVelocity(double angle)
+{
+    // Simple proportional control for angular velocity based on the resultant vector's angle
+    double kp = 1.0; // Proportional gain
+    return clamp(kp * angle, -1.0, 1.0); // Clamp to a safe angular speed range
 }
 
+double VFFAvoidance::clamp(double value, double min, double max)
+{
+    return std::max(min, std::min(value, max));
+}
 
-
-// void AvoidanceNode::laser_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
-//     float repulsive_force_x = 0.0;
-//     float repulsive_force_y = 0.0;
-
-//     for (size_t i = 0; i < msg->ranges.size(); ++i) {
-//         float range = msg->ranges[i];
-//         if (range < msg->range_max && range > msg->range_min) {
-//             float angle = msg->angle_min + i * msg->angle_increment;
-//             float force = 0.1 / range; // simple inverse distance weighting
-//             repulsive_force_x += force * std::cos(angle);
-//             repulsive_force_y += force * std::sin(angle);
-//         }
-//     }
-
-//     // Normalize the repulsive forces
-//     float magnitude = std::sqrt(repulsive_force_x * repulsive_force_x + repulsive_force_y * repulsive_force_y);
-//     if (magnitude > 0.0) {
-//         repulsive_force_x /= magnitude;
-//         repulsive_force_y /= magnitude;
-//     }
-
-//     // Compute the desired velocity
-//     float linear_x = 0.2 - repulsive_force_x;
-//     float angular_z = -repulsive_force_y;
-
-//     auto twist_msg = geometry_msgs::msg::Twist();
-//     twist_msg.linear.x = linear_x;
-//     twist_msg.angular.z = angular_z;
-
-//     publisher_->publish(twist_msg);
-// }
-
-
-
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<AvoidanceNode>());
+    rclcpp::spin(std::make_shared<VFFAvoidance>());
     rclcpp::shutdown();
     return 0;
 }

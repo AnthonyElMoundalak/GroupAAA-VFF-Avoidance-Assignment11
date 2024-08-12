@@ -1,30 +1,38 @@
-#ifndef AVOIDANCE_NODE_HPP
-#define AVOIDANCE_NODE_HPP
+#ifndef VFF_AVOIDANCE_HPP
+#define VFF_AVOIDANCE_HPP
 
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/laser_scan.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
+#include <tf2/LinearMath/Vector3.h>
+#include "nav_msgs/msg/odometry.hpp"
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 
-class AvoidanceNode : public rclcpp::Node {
+
+
+
+class VFFAvoidance : public rclcpp::Node {
 public:
-    AvoidanceNode();
+    VFFAvoidance();
 
 private:
-    void laser_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg);
-    void timer_callback();
-    void calculate_forces();
+    void laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg);
+    tf2::Vector3 calculateRepulsiveVector(const sensor_msgs::msg::LaserScan::SharedPtr& msg);
+    double calculateAngularVelocity(double angle);
+    double clamp(double value, double min, double max);
+    
+    
 
-    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscription_;
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
-    rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_publisher_;
 
-    geometry_msgs::msg::Twist cmd_vel_msg_;
-    sensor_msgs::msg::LaserScan::SharedPtr laser_scan_;
+   
 
-    double repulsive_strength_;
-    double repulsive_distance_;
-    double speed_;
-    int frequency_;
+    
+    tf2::Vector3 fixed_global_direction_;
 };
 
-#endif // VFF_NODE_HPP
+#endif // VFF_AVOIDANCE_HPP
