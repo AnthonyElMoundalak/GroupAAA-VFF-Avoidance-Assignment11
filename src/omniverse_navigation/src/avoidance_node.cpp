@@ -47,9 +47,33 @@ void AvoidanceNode::calculate_forces(){
     float repulsive_force_x = 0.0;
     float repulsive_force_y = 0.0;
 
-    double closest_obstacle_distance = *std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
-    auto min_element_iter = std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
-    int i = std::distance(laser_scan_->ranges.begin(), min_element_iter);
+    // double closest_obstacle_distance = *std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
+    // auto min_element_iter = std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
+    // int i = std::distance(laser_scan_->ranges.begin(), min_element_iter);
+
+
+    // Find the minimum element in the first 90 elements
+    auto minFirst90Iter = std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.begin() + 90);
+    float minFirst90 = *minFirst90Iter;
+    int posMinFirst90 = std::distance(laser_scan_->ranges.begin(), minFirst90Iter);
+
+    // Find the minimum element in the last 90 elements
+    auto minLast90Iter = std::min_element(laser_scan_->ranges.end() - 90, laser_scan_->ranges.end());
+    float minLast90 = *minLast90Iter;
+    int posMinLast90 = std::distance(laser_scan_->ranges.begin(), minLast90Iter);
+
+    // Compare the two minimums and find the overall minimum and its position
+    double closest_obstacle_distance;
+    int i;
+    if (minFirst90 < minLast90) {
+        closest_obstacle_distance = minFirst90;
+        i = posMinFirst90;
+    } else {
+        closest_obstacle_distance = minLast90;
+        i = posMinLast90;
+    }
+
+
 
     if (closest_obstacle_distance < repulsive_distance_){
         float angle = laser_scan_->angle_min + i * laser_scan_->angle_increment;
