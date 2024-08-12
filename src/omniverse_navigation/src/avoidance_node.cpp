@@ -7,10 +7,26 @@ AvoidanceNode::AvoidanceNode() : Node("avoidance_node") {
         "/scan", 10, std::bind(&AvoidanceNode::laser_callback, this, std::placeholders::_1));
     publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
-    repulsive_strength_ = 0.05;
-    repulsive_distance_ = 0.55;
-    speed_ = 0.4;
-    frequency_ = 20;
+    // repulsive_strength_ = 0.05;
+    // repulsive_distance_ = 0.55;
+    // speed_ = 0.4;
+    // frequency_ = 20;
+
+    this->declare_parameter("repulsive_strength", 0.05);
+    repulsive_strength_ = this->get_parameter("repulsive_strength").as_double();
+
+    this->declare_parameter("repulsive_distance", 0.55);
+    repulsive_distance_ = this->get_parameter("repulsive_distance").as_double();
+
+    this->declare_parameter("speed", 0.4);
+    speed_ = this->get_parameter("speed").as_double();
+
+    this->declare_parameter("frequency", 20);
+    frequency_ = this->get_parameter("frequency").as_int();
+
+    this->declare_parameter("max_force", 0.6);
+    max_force_ = this->get_parameter("max_force").as_double();
+
 
     int period_in_milliseconds = 1000 / frequency_;
     timer_ = this->create_wall_timer(
@@ -78,7 +94,7 @@ void AvoidanceNode::calculate_forces(){
     if (closest_obstacle_distance < repulsive_distance_){
         float angle = laser_scan_->angle_min + i * laser_scan_->angle_increment;
         float force = repulsive_strength_ / (closest_obstacle_distance * closest_obstacle_distance);
-        if (force > 0.6) force = 0.6;
+        if (force > max_force_) force = max_force_;
         repulsive_force_x += -force * std::cos(angle);
         repulsive_force_y += -force * std::sin(angle);
     }

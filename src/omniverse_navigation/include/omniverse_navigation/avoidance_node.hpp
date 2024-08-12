@@ -25,6 +25,7 @@ private:
     double repulsive_distance_;
     double speed_;
     int frequency_;
+    double max_force_;
 };
 
-#endif // VFF_NODE_HPP
+#endif // AVOIDANCE_NODE_HPP
