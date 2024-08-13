@@ -9,20 +9,19 @@ This project implements a simple behavior that allows a turtle bot to move forwa
 
 
 ## Project Structure
-vff_avoidance/ <br>
+omniverse_navigation/ <br>
 ├── CMakeLists.txt <br>
 ├── package.xml<br>
 ├── config/<br>
 │   └── AvoidanceNodeConfig.yaml <br>
 ├── include/<br>
-│   └── vff_avoidance/<br>
-│       └── AvoidanceNode.hpp <br>
+│   └── omniverse_navigation/<br>
+│       └── avoidance_node.hpp <br>
 ├── launch/<br>
-│   └── avoidance_vff.launch.py <br>
+│   └── launch.py <br>
 └── src/<br>
-    ├── avoidance_vff_main.cpp<br>
-    └── vff_avoidance/<br>
-        └── AvoidanceNode.cpp<br>
+    ├── avoidance_node.cpp<br>
+        
 
 
  ## Control Logic
