@@ -41,3 +41,41 @@ The AvoidanceNode publishes visual markers for debugging purposes in Rviz2:
 
 - Publishes messages of type visualization_msgs/msg/MarkerArray, with each marker as visualization_msgs/ msg/Marker of type arrow.
 - Publishes debugging messages only if there are subscribers to the debugging topic.
+
+
+## How to Clone and Build the Project
+
+### Cloning the Repository
+
+To clone the repository, use the following command:
+
+```sh
+git clone git@github.com:AnthonyElMoundalak/GroupAAA-VFF-Avoidance-Assignment11.git
+```
+
+### Building the project
+
+Navigate to the workspace directory and use the following commands
+
+```sh
+colcon build
+source install/setup.bash
+```
+
+### Running the project 
+
+After successfully compiling the project, you can run the executable:
+
+```sh
+ros2 launch omniverse_navigation launch.py
+
+```
+## Conclusion
+
+This projects showcases the working of the virtual force field algorithm in navigating an obstacle course, as well as visualization techniques for debugging purposes.
+
+## Team members
+
+-Anthony Bassil
+-Anthiny Moundalak
+-Ahmad Chaachouh
