@@ -76,6 +76,6 @@ This projects showcases the working of the virtual force field algorithm in navi
 
 ## Team members
 
--Anthony Bassil
--Anthiny Moundalak
--Ahmad Chaachouh
+- Anthony Bassil  
+- Anthony Moundalak 
+- Ahmad Chaachouh
