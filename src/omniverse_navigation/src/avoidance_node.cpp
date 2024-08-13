@@ -27,8 +27,6 @@ AvoidanceNode::AvoidanceNode() : Node("avoidance_node") {
     this->declare_parameter("frequency", 20);
     frequency_ = this->get_parameter("frequency").as_int();
 
-    this->declare_parameter("max_force", 0.6);
-    max_force_ = this->get_parameter("max_force").as_double();
 
 
     int period_in_milliseconds = 1000 / frequency_;
@@ -105,7 +103,7 @@ void AvoidanceNode::calculate_forces(){
     if (closest_obstacle_distance < repulsive_distance_){
         float angle = laser_scan_->angle_min + i * laser_scan_->angle_increment;
         float force = repulsive_strength_ / (closest_obstacle_distance * closest_obstacle_distance);
-        if (force > max_force_) force = max_force_;
+
         repulsive_force_x += -force * std::cos(angle);
         repulsive_force_y += -force * std::sin(angle);
         repulsive_force_.clear();
@@ -127,9 +125,23 @@ void AvoidanceNode::calculate_forces(){
     resultant_force_.push_back(resultant_force_x);
     resultant_force_.push_back(resultant_force_y);
 
-    cmd_vel_msg_.linear.x = resultant_force_x;
-    cmd_vel_msg_.angular.z = std::atan2(resultant_force_y, resultant_force_x);
+    double angle = std::atan2(resultant_force_y, resultant_force_x);
+    double angular_velocity = calculateAngularVelocity(angle);
 
+    cmd_vel_msg_.linear.x = clamp (resultant_force_x, 0.0, 0.5);
+    cmd_vel_msg_.angular.z = angular_velocity;
+
+}
+double AvoidanceNode::calculateAngularVelocity(double angle)
+{
+    // Simple proportional control for angular velocity based on the resultant vector's angle
+    double kp = 1.0; // Proportional gain
+    return clamp(kp * angle, -1.0, 1.0); // Clamp to a safe angular speed range
+}
+
+double AvoidanceNode::clamp(double value, double min, double max)
+{
+    return std::max(min, std::min(value, max));
 }
 
 
