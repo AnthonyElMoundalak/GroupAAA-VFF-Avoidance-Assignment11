@@ -15,6 +15,9 @@ private:
     void timer_callback();
     void calculate_forces();
     void publish_markers();
+    double calculateAngularVelocity(double angle);
+    double clamp(double value, double min, double max);
+
 
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscription_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
@@ -34,7 +37,6 @@ private:
     double repulsive_distance_;
     double speed_;
     int frequency_;
-    double max_force_;
 };
 
 #endif // AVOIDANCE_NODE_HPP

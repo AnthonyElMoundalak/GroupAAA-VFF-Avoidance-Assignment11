@@ -4,4 +4,3 @@ avoidance_node:
     repulsive_distance : 0.55
     speed : 0.4
     frequency : 20
-    max_force : 0.6
