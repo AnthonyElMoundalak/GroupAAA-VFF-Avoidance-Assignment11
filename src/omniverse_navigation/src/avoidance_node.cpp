@@ -72,11 +72,6 @@ void AvoidanceNode::calculate_forces(){
     attractive_force_.resize(2, 0.0);
     resultant_force_.resize(2, 0.0);
 
-    
-
-    double closest_obstacle_distance = *std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
-    auto min_element_iter = std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
-    int i = std::distance(laser_scan_->ranges.begin(), min_element_iter);
 
     // double closest_obstacle_distance = *std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
     // auto min_element_iter = std::min_element(laser_scan_->ranges.begin(), laser_scan_->ranges.end());
